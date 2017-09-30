@@ -3,6 +3,7 @@
 import csv
 import urllib.request
 from bs4 import BeautifulSoup
+from urllib.parse import urlparse
 
 # Новини двох країн
 FIRST_URL = 'https://news.google.com/news/?ned=uk_ua&hl=uk'
@@ -51,28 +52,31 @@ def parse(html):
             for story_row in story_rows.find_all('c-wiz', class_='lPV2Xe k3Pzib Kckm1e'):
                 all_url_story = story_row.find('a', class_='nuEeue hzdq5d ME7ew', href=True)
 
-                # Роблю виключення
-                try:
-                    all_url = all_url_story.attrs['href']
-                except:
-                    all_url = ''
+                all_url = all_url_story.attrs['href']
+                all_url = urlparse(all_url).hostname
+                all_url = all_url[4:] if all_url.startswith('www.') else all_url
 
-                try:
-                    publishing_by = story_row.find('span', class_='IH8C7b Pc0Wt').text
-                except:
-                    publishing_by = ''
+                publishing_by = story_row.find('span', class_='IH8C7b Pc0Wt').text
 
-                projects.append({
-                    'publishing_by': publishing_by,
-                    'url': all_url,
-                    'country': country,
-                    'title': title
-                })
+                # Перевіряю на копії
+                already_present = False
+                # for project in projects:
+                # 	if publishing_by == project['publishing_by']:
+                # 		already_present = True
+                # 		break
+                already_present = any(all_url == p['url'] for p in projects)
+                if not already_present:
+                    projects.append({
+                        'publishing_by': publishing_by,
+                        'url': all_url,
+                        'country': country,
+                        'title': title
+                    })
     return projects
 
 
 def save(projects, path):
-    with open(path, 'a') as csvfile:
+    with open(path, 'w') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(('Publishing by', 'URL', 'Country', 'Section'))
 
